@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-const hash = "2ab6d209dbc6c58d44af9e2cec539f40"
+const hash = "27c8c5fc3875c1ab804885a2cccc8bcb"
 
 // 40 char
-var s = []byte("test buf file the writeFile performance.")
+var s = []byte("test buf file the readWrite performance.")
 var readContent []byte
 
 // 1024000 * 40 = 40M
@@ -22,7 +22,26 @@ func writeFile(writer io.Writer) {
 	}
 }
 
-func readFile(read io.ReaderAt) {
+func readFileWithReadAt(read io.ReaderAt) {
+	readContent = []byte{}
+	var offset int64
+	for true {
+		buf := make([]byte, 1024*10)
+		at, err := read.ReadAt(buf, offset)
+		offset += int64(at)
+		if at > 0 {
+			readContent = append(readContent, buf[:at]...)
+		}
+		if len(readContent) == 40960000 {
+			break
+		}
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func readFileWithReadAtIgnoreEOF(read io.ReaderAt) {
 	readContent = []byte{}
 	var offset int64
 	for true {
@@ -45,7 +64,6 @@ func readFile(read io.ReaderAt) {
 }
 
 func testOsFileWrite() {
-	// file writer avg cost: 1609.280375 ms 24.85 M/s
 	start := time.Now()
 	for i := 0; i < 10; i++ {
 		os.Remove("/tmp/buf_file")
@@ -59,7 +77,7 @@ func testOsFileWrite() {
 	}
 	end := time.Now()
 
-	fmt.Printf("avg cost: %f ms", float64(end.Sub(start).Nanoseconds())/1000/1000/10)
+	echo("testOsFileWrite", end.Sub(start), 10)
 }
 
 func testOsFileReader() {
@@ -71,37 +89,44 @@ func testOsFileReader() {
 			panic(err)
 		}
 
-		readFile(file)
+		readFileWithReadAtIgnoreEOF(file)
 		file.Close()
 	}
 	end := time.Now()
 
-	fmt.Printf("avg cost: %f ms", float64(end.Sub(start).Nanoseconds())/1000/1000/10)
+	echo("testOsFileReader", end.Sub(start), 10)
 }
 
 func testBuffFileReader() {
-	// 40M avg cost: 81.650695 ms
 	start := time.Now()
 	for i := 0; i < 10; i++ {
-		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE, 0644)
 		if err != nil {
 			panic(err)
 		}
 
-		bufFile := buf_file.NewBufFile(file, 1024*1024*4)
-		readFile(bufFile)
+		bufFile, err := buf_file.NewBufFile("/tmp/buf_file", 1024*1024*4)
+		if err != nil {
+			panic(err)
+		}
+
+		reader, err := bufFile.GetReader()
+
+		if err != nil {
+			panic(err)
+		}
+
+		readFileWithReadAt(reader)
+		// reader need close
+		reader.Close()
 		file.Close()
 	}
 	end := time.Now()
 
-	fmt.Printf("avg cost: %f ms", float64(end.Sub(start).Nanoseconds())/1000/1000/10)
+	echo("testBuffFileReader", end.Sub(start), 10)
 }
 
 func testBufferFileWrite() {
-	// buffer file writer avg cost: 10k, 38.335672 ms 1043.41 M/s
-	// buffer file writer avg cost: 1M, 32.305683 ms x
-	// buffer file writer avg cost: 4M, 37.540536 ms x
-	// buffer file writer avg cost: 10M, 38.428869 ms x
 	start := time.Now()
 	for i := 0; i < 10; i++ {
 		os.Remove("/tmp/buf_file")
@@ -111,15 +136,23 @@ func testBufferFileWrite() {
 			panic(err)
 		}
 
-		bufFile := buf_file.NewBufFile(file, 1024*1024*4)
+		bufFile, err := buf_file.NewBufFile("/tmp/buf_file", 1024*1024*4)
 
-		writeFile(bufFile)
-		bufFile.Flush()
+		if err != nil {
+			panic(err)
+		}
+
 		file.Close()
+		writer, err := bufFile.GetWriter()
+
+		if err != nil {
+			panic(err)
+		}
+		writeFileAndClose(writer)
 	}
 	end := time.Now()
 
-	fmt.Printf("avg cost: %f ms", float64(end.Sub(start).Nanoseconds())/1000/1000/10)
+	echo("testBufferFileWrite", end.Sub(start), 10)
 }
 
 func testOsFileWriteAndRead() {
@@ -133,16 +166,20 @@ func testOsFileWriteAndRead() {
 		}
 
 		go writeFile(file)
-		readFile(file)
+		readFileWithReadAtIgnoreEOF(file)
 		file.Close()
 	}
 	end := time.Now()
 
-	fmt.Printf("avg cost: %f ms", float64(end.Sub(start).Nanoseconds())/1000/1000/10)
+	echo("testOsFileWriteAndRead", end.Sub(start), 10)
+}
+
+func writeFileAndClose(writer *buf_file.BufFileWriter) {
+	writeFile(writer)
+	writer.Close()
 }
 
 func testBuffFileWriteAndRead() {
-	// 40M  avg cost: 65.301589 ms
 	start := time.Now()
 	for i := 0; i < 10; i++ {
 		os.Remove("/tmp/buf_file")
@@ -151,21 +188,42 @@ func testBuffFileWriteAndRead() {
 			panic(err)
 		}
 
-		bufFile := buf_file.NewBufFile(file, 1024*1024*4)
+		bufFile, err := buf_file.NewBufFile("/tmp/buf_file", 1024*1024*4)
 
-		go writeFile(bufFile)
-		readFile(bufFile)
-		bufFile.Flush()
+		if err != nil {
+			panic(err)
+		}
+
+		writer, err := bufFile.GetWriter()
+
+		if err != nil {
+			panic(err)
+		}
+
 		file.Close()
+
+		reader, err := bufFile.GetReader()
+
+		if err != nil {
+			panic(err)
+		}
+
+		go writeFileAndClose(writer)
+		readFileWithReadAt(reader)
 	}
 	end := time.Now()
 
-	fmt.Printf("avg cost: %f ms", float64(end.Sub(start).Nanoseconds())/1000/1000/10)
+	echo("testBuffFileWriteAndRead", end.Sub(start), 10)
+}
+
+func echo(key string, time time.Duration, count int) {
+	ms := time.Seconds() * 1000 / float64(count)
+
+	fmt.Printf("%s: avg cost: %f ms p: %fM/s\n", key, ms, 40/ms*1000)
 }
 
 func compareWrite() {
-	//testOsFileWrite()
-	testBufferFileWrite()
+	testOsFileWrite()
 
 	file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
 
@@ -176,20 +234,51 @@ func compareWrite() {
 	if stat.Size() != 40960000 {
 		panic("file size error")
 	}
+
+	testBufferFileWrite()
+
+	file, err = os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+
+	if err != nil {
+		panic(err)
+	}
+	stat, _ = file.Stat()
+	if stat.Size() != 40960000 {
+		panic("file size error")
+	}
 }
 
 func compareRead() {
-	//testOsFileReader()
 	testBuffFileReader()
 
 	if len(readContent) != 40960000 {
 		panic("file size error")
 	}
+	if hashx(readContent) != hash {
+		panic("content hash error")
+	}
+	testOsFileReader()
+
+	if len(readContent) != 40960000 {
+		panic("file size error")
+	}
+
+	if hashx(readContent) != hash {
+		panic("content hash error")
+	}
 }
 
 func compareWriteAndRead() {
-	//testOsFileWriteAndRead()
 	testBuffFileWriteAndRead()
+
+	if hashx(readContent) != hash {
+		panic("content hash error")
+	}
+	if len(readContent) != 40960000 {
+		panic("file size error")
+	}
+
+	testOsFileWriteAndRead()
 
 	if hashx(readContent) != hash {
 		panic("content hash error")
@@ -199,7 +288,7 @@ func compareWriteAndRead() {
 	}
 }
 
-// content md5 2ab6d209dbc6c58d44af9e2cec539f40
+// content md5 27c8c5fc3875c1ab804885a2cccc8bcb
 
 func hashx(TestString []byte) string {
 	Md5Inst := md5.New()
@@ -210,5 +299,9 @@ func hashx(TestString []byte) string {
 }
 
 func main() {
+	compareWrite()
+
+	compareRead()
+
 	compareWriteAndRead()
 }
