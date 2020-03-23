@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/md5"
 	"fmt"
 	"github.com/Dowte/buf-file"
@@ -78,6 +79,26 @@ func testOsFileWrite() {
 	end := time.Now()
 
 	echo("testOsFileWrite", end.Sub(start), 10)
+}
+
+func testBufioFileWrite() {
+	start := time.Now()
+	for i := 0; i < 10; i++ {
+		os.Remove("/tmp/buf_file")
+		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+		if err != nil {
+			panic(err)
+		}
+
+		size := bufio.NewWriterSize(file, 1024*1024*4)
+
+		writeFile(size)
+		size.Flush()
+		file.Close()
+	}
+	end := time.Now()
+
+	echo("testBufioFileWrite", end.Sub(start), 10)
 }
 
 func testOsFileReader() {
@@ -237,13 +258,24 @@ func compareWrite() {
 
 	testBufferFileWrite()
 
-	file, err = os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+	file2, err2 := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
 
-	if err != nil {
-		panic(err)
+	if err2 != nil {
+		panic(err2)
 	}
-	stat, _ = file.Stat()
-	if stat.Size() != 40960000 {
+	stat2, _ := file2.Stat()
+	if stat2.Size() != 40960000 {
+		panic("file size error")
+	}
+
+	testBufioFileWrite()
+	file3, err3 := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+
+	if err3 != nil {
+		panic(err3)
+	}
+	stat3, _ := file3.Stat()
+	if stat3.Size() != 40960000 {
 		panic("file size error")
 	}
 }
