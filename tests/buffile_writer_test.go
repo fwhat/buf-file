@@ -10,15 +10,23 @@ import (
 	"testing"
 )
 
-const hash = "27c8c5fc3875c1ab804885a2cccc8bcb"
+const hash = "6273962f98e8f3591daa492de531a209"
 
-// 40 char
-var s = []byte("test buf file the readWrite performance.")
+// 64 char
+var s = []byte("test buf file the readWrite performance when write 400 * 1048576")
+var repeatStr []byte // 4096 char
 
-// 1024000 * 40 = 40M
+func init() {
+	for i := 0; i < 64; i++ {
+		repeatStr = append(repeatStr, s...)
+	}
+}
+
+// 4096 *1024 * 10 = 400M 419430400
 func writeFile(writer io.Writer) error {
-	for i := 0; i < 1024000; i++ {
-		_, err := writer.Write(s)
+	// 1024 * 10
+	for i := 0; i < 102400; i++ {
+		_, err := writer.Write(repeatStr)
 		if err != nil {
 			return err
 		}
@@ -53,7 +61,7 @@ func TestWriteSize(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if n != 40 {
+		if n != 64 {
 			t.Error("write size invalid")
 		}
 	}
@@ -84,7 +92,7 @@ func TestWriteBuffered(t *testing.T) {
 	for i := 0; i < 1024; i++ {
 		writer.Write(s)
 
-		count += 40
+		count += 64
 
 		if count > 1024 {
 			count = count - 1024
@@ -129,7 +137,7 @@ func TestWriteContent(t *testing.T) {
 		t.Error(err)
 	}
 	stat, _ := file.Stat()
-	if stat.Size() != 40960000 {
+	if stat.Size() != 419430400 {
 		t.Error(err)
 	}
 

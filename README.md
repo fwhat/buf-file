@@ -101,12 +101,13 @@ func main () {
 #### test
 
 ```
-testOsFileWrite: avg cost: 1670.818854 ms p: 23.940357M/s
-testBufferFileWrite: avg cost: 67.421164 ms p: 593.285511M/s
-testBufioFileWrite: avg cost: 35.548261 ms p: 1125.230858M/s
-testBuffFileReader: avg cost: 58.648416 ms p: 682.030358M/s
-testOsFileReader: avg cost: 36.335624 ms p: 1100.848018M/s
-testBuffFileWriteAndRead: avg cost: 81.141164 ms p: 492.968035M/s
-testOsFileWriteAndRead: avg cost: 2300.550556 ms p: 17.387142M/s
+# write 102400 times each 4k total 400M
+
+testOsFileWrite: avg cost: 111.123039 ms p: 359.961358M/s
+testBufferFileWrite: avg cost: 59.361948 ms p: 673.832336M/s
+testBufioFileWrite: avg cost: 70.071467 ms p: 570.845760M/s
+testOsFileReader: avg cost: 610.278888 ms p: 65.543804M/s
+testBuffFileReader: avg cost: 483.647542 ms p: 82.704855M/s
+testBuffFileWriteAndRead: avg cost: 95.381160 ms p: 419.370030M/s
 
 ```

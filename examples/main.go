@@ -10,17 +10,31 @@ import (
 	"time"
 )
 
-const hash = "27c8c5fc3875c1ab804885a2cccc8bcb"
+const hash = "6273962f98e8f3591daa492de531a209"
+const buffSize = 1024 * 1024 * 10
 
-// 40 char
-var s = []byte("test buf file the readWrite performance.")
+// 64 char
+var s = []byte("test buf file the readWrite performance when write 400 * 1048576")
 var readContent []byte
+var repeatStr []byte // 4096 char
 
-// 1024000 * 40 = 40M
-func writeFile(writer io.Writer) {
-	for i := 0; i < 1024000; i++ {
-		writer.Write(s)
+func init() {
+	for i := 0; i < 64; i++ {
+		repeatStr = append(repeatStr, s...)
 	}
+}
+
+// 4096 *1024 * 100 = 400M 419430400
+func writeFile(writer io.Writer) error {
+	// 1024 * 100
+	for i := 0; i < 102400; i++ {
+		_, err := writer.Write(repeatStr)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func readFileWithReadAt(read io.ReaderAt) {
@@ -33,32 +47,10 @@ func readFileWithReadAt(read io.ReaderAt) {
 		if at > 0 {
 			readContent = append(readContent, buf[:at]...)
 		}
-		if len(readContent) == 40960000 {
+		if len(readContent) == 419430400 {
 			break
 		}
 		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func readFileWithReadAtIgnoreEOF(read io.ReaderAt) {
-	readContent = []byte{}
-	var offset int64
-	for true {
-		buf := make([]byte, 1024*10)
-		at, err := read.ReadAt(buf, offset)
-		offset += int64(at)
-		if at > 0 {
-			readContent = append(readContent, buf[:at]...)
-		}
-		if len(readContent) == 40960000 {
-			break
-		}
-		if err != nil {
-			if err == io.EOF {
-				continue
-			}
 			panic(err)
 		}
 	}
@@ -66,36 +58,32 @@ func readFileWithReadAtIgnoreEOF(read io.ReaderAt) {
 
 func testOsFileWrite() {
 	start := time.Now()
-	for i := 0; i < 10; i++ {
-		os.Remove("/tmp/buf_file")
-		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil {
-			panic(err)
-		}
-
-		writeFile(file)
-		file.Close()
+	os.Remove("/tmp/buf_file")
+	file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		panic(err)
 	}
+
+	writeFile(file)
+	file.Close()
 	end := time.Now()
 
 	echo("testOsFileWrite", end.Sub(start), 10)
 }
 
 func testBufioFileWrite() {
+	os.Remove("/tmp/buf_file")
 	start := time.Now()
-	for i := 0; i < 10; i++ {
-		os.Remove("/tmp/buf_file")
-		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil {
-			panic(err)
-		}
-
-		size := bufio.NewWriterSize(file, 1024*1024*4)
-
-		writeFile(size)
-		size.Flush()
-		file.Close()
+	file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		panic(err)
 	}
+
+	size := bufio.NewWriterSize(file, buffSize)
+
+	writeFile(size)
+	size.Flush()
+	file.Close()
 	end := time.Now()
 
 	echo("testBufioFileWrite", end.Sub(start), 10)
@@ -110,7 +98,7 @@ func testOsFileReader() {
 			panic(err)
 		}
 
-		readFileWithReadAtIgnoreEOF(file)
+		readFileWithReadAt(file)
 		file.Close()
 	}
 	end := time.Now()
@@ -126,7 +114,7 @@ func testBuffFileReader() {
 			panic(err)
 		}
 
-		bufFile, err := buf_file.NewBufFile("/tmp/buf_file", 1024*1024*4)
+		bufFile, err := buf_file.NewBufFile("/tmp/buf_file", buffSize)
 		if err != nil {
 			panic(err)
 		}
@@ -145,54 +133,40 @@ func testBuffFileReader() {
 	end := time.Now()
 
 	echo("testBuffFileReader", end.Sub(start), 10)
+
+	if len(readContent) != 419430400 {
+		panic("file size error")
+	}
+	if hashx(readContent) != hash {
+		panic("content hash error")
+	}
 }
 
 func testBufferFileWrite() {
+	os.Remove("/tmp/buf_file")
 	start := time.Now()
-	for i := 0; i < 10; i++ {
-		os.Remove("/tmp/buf_file")
 
-		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil {
-			panic(err)
-		}
-
-		bufFile, err := buf_file.NewBufFile("/tmp/buf_file", 1024*1024*4)
-
-		if err != nil {
-			panic(err)
-		}
-
-		file.Close()
-		writer, err := bufFile.GetWriter()
-
-		if err != nil {
-			panic(err)
-		}
-		writeFileAndClose(writer)
+	file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		panic(err)
 	}
+
+	bufFile, err := buf_file.NewBufFile("/tmp/buf_file", buffSize)
+
+	if err != nil {
+		panic(err)
+	}
+
+	file.Close()
+	writer, err := bufFile.GetWriter()
+
+	if err != nil {
+		panic(err)
+	}
+	writeFileAndClose(writer)
 	end := time.Now()
 
 	echo("testBufferFileWrite", end.Sub(start), 10)
-}
-
-func testOsFileWriteAndRead() {
-	// 40M avg cost: 2263.035093 ms
-	start := time.Now()
-	for i := 0; i < 10; i++ {
-		os.Remove("/tmp/buf_file")
-		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil {
-			panic(err)
-		}
-
-		go writeFile(file)
-		readFileWithReadAtIgnoreEOF(file)
-		file.Close()
-	}
-	end := time.Now()
-
-	echo("testOsFileWriteAndRead", end.Sub(start), 10)
 }
 
 func writeFileAndClose(writer *buf_file.BufFileWriter) {
@@ -201,40 +175,45 @@ func writeFileAndClose(writer *buf_file.BufFileWriter) {
 }
 
 func testBuffFileWriteAndRead() {
+	os.Remove("/tmp/buf_file")
 	start := time.Now()
-	for i := 0; i < 10; i++ {
-		os.Remove("/tmp/buf_file")
-		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil {
-			panic(err)
-		}
-
-		bufFile, err := buf_file.NewBufFile("/tmp/buf_file", 1024*1024*4)
-
-		if err != nil {
-			panic(err)
-		}
-
-		writer, err := bufFile.GetWriter()
-
-		if err != nil {
-			panic(err)
-		}
-
-		file.Close()
-
-		reader, err := bufFile.GetReader()
-
-		if err != nil {
-			panic(err)
-		}
-
-		go writeFileAndClose(writer)
-		readFileWithReadAt(reader)
+	file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		panic(err)
 	}
+
+	bufFile, err := buf_file.NewBufFile("/tmp/buf_file", buffSize)
+
+	if err != nil {
+		panic(err)
+	}
+
+	writer, err := bufFile.GetWriter()
+
+	if err != nil {
+		panic(err)
+	}
+
+	file.Close()
+
+	reader, err := bufFile.GetReader()
+
+	if err != nil {
+		panic(err)
+	}
+
+	go writeFileAndClose(writer)
+	readFileWithReadAt(reader)
 	end := time.Now()
 
 	echo("testBuffFileWriteAndRead", end.Sub(start), 10)
+
+	if hashx(readContent) != hash {
+		panic("content hash error")
+	}
+	if len(readContent) != 419430400 {
+		panic("file size error")
+	}
 }
 
 func echo(key string, time time.Duration, count int) {
@@ -252,7 +231,7 @@ func compareWrite() {
 		panic(err)
 	}
 	stat, _ := file.Stat()
-	if stat.Size() != 40960000 {
+	if stat.Size() != 419430400 {
 		panic("file size error")
 	}
 
@@ -264,7 +243,7 @@ func compareWrite() {
 		panic(err2)
 	}
 	stat2, _ := file2.Stat()
-	if stat2.Size() != 40960000 {
+	if stat2.Size() != 419430400 {
 		panic("file size error")
 	}
 
@@ -275,47 +254,7 @@ func compareWrite() {
 		panic(err3)
 	}
 	stat3, _ := file3.Stat()
-	if stat3.Size() != 40960000 {
-		panic("file size error")
-	}
-}
-
-func compareRead() {
-	testBuffFileReader()
-
-	if len(readContent) != 40960000 {
-		panic("file size error")
-	}
-	if hashx(readContent) != hash {
-		panic("content hash error")
-	}
-	testOsFileReader()
-
-	if len(readContent) != 40960000 {
-		panic("file size error")
-	}
-
-	if hashx(readContent) != hash {
-		panic("content hash error")
-	}
-}
-
-func compareWriteAndRead() {
-	testBuffFileWriteAndRead()
-
-	if hashx(readContent) != hash {
-		panic("content hash error")
-	}
-	if len(readContent) != 40960000 {
-		panic("file size error")
-	}
-
-	testOsFileWriteAndRead()
-
-	if hashx(readContent) != hash {
-		panic("content hash error")
-	}
-	if len(readContent) != 40960000 {
+	if stat3.Size() != 419430400 {
 		panic("file size error")
 	}
 }
@@ -325,15 +264,14 @@ func compareWriteAndRead() {
 func hashx(TestString []byte) string {
 	Md5Inst := md5.New()
 	Md5Inst.Write(TestString)
-	Result := Md5Inst.Sum([]byte(""))
+	Result := Md5Inst.Sum(nil)
 
 	return fmt.Sprintf("%x", Result)
 }
 
 func main() {
 	compareWrite()
-
-	compareRead()
-
-	compareWriteAndRead()
+	testOsFileReader()
+	testBuffFileReader()
+	testBuffFileWriteAndRead()
 }
