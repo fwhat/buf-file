@@ -6,20 +6,16 @@ import (
 	"fmt"
 	"github.com/Dowte/buf-file"
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
 )
 
 const hash = "6273962f98e8f3591daa492de531a209"
-const buffSize = 1024 * 1024 * 10
 
-// 64 char
-var s = []byte("test buf file the readWrite performance when write 400 * 1048576")
-var readContent []byte
-var repeatStr []byte // 4096 char
-
-func init() {
-	for i := 0; i < 64; i++ {
+func initRepeatStr() {
+	repeatStr = []byte{}
+	for i := 0; i < repeatTimes; i++ {
 		repeatStr = append(repeatStr, s...)
 	}
 }
@@ -27,7 +23,7 @@ func init() {
 // 4096 *1024 * 100 = 400M 419430400
 func writeFile(writer io.Writer) error {
 	// 1024 * 100
-	for i := 0; i < 102400; i++ {
+	for i := 0; i < writeTimes; i++ {
 		_, err := writer.Write(repeatStr)
 		if err != nil {
 			return err
@@ -57,8 +53,8 @@ func readFileWithReadAt(read io.ReaderAt) {
 }
 
 func testOsFileWrite() {
-	start := time.Now()
 	os.Remove("/tmp/buf_file")
+	start := time.Now()
 	file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		panic(err)
@@ -69,6 +65,24 @@ func testOsFileWrite() {
 	end := time.Now()
 
 	echo("testOsFileWrite", end.Sub(start), 10)
+}
+
+func testWriteAll() {
+	file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	all, _ := ioutil.ReadAll(file)
+
+	os.Remove("/tmp/buf_file")
+	file.Close()
+
+	start := time.Now()
+	ioutil.WriteFile("/tmp/buf_file", all, 0644)
+	end := time.Now()
+
+	echo("testOsWriteAll", end.Sub(start), 10)
 }
 
 func testBufioFileWrite() {
@@ -90,7 +104,6 @@ func testBufioFileWrite() {
 }
 
 func testOsFileReader() {
-	// 40M avg cost: 74.660214 ms
 	start := time.Now()
 	for i := 0; i < 10; i++ {
 		file, err := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
@@ -235,6 +248,18 @@ func compareWrite() {
 		panic("file size error")
 	}
 
+	testWriteAll()
+
+	file4, err4 := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
+
+	if err4 != nil {
+		panic(err)
+	}
+	stat4, _ := file4.Stat()
+	if stat4.Size() != 419430400 {
+		panic("file size error")
+	}
+
 	testBufferFileWrite()
 
 	file2, err2 := os.OpenFile("/tmp/buf_file", os.O_CREATE|os.O_RDWR, 0644)
@@ -269,7 +294,29 @@ func hashx(TestString []byte) string {
 	return fmt.Sprintf("%x", Result)
 }
 
+// 64 char
+var s = []byte("test buf file the readWrite performance when write 400 * 1048576")
+var readContent []byte
+var repeatStr []byte // 4096 char
+var repeatTimes = 64
+var writeTimes = 102400
+var buffSize = 1024 * 1024 * 10
+
 func main() {
+	buffSize = 1024 * 1024 * 30
+	initRepeatStr()
+	fmt.Printf(">>>> write %d times each %dbyte writeBufSize %dbyte total 400M\n\n", writeTimes, len(repeatStr), buffSize)
+	compareWrite()
+	testOsFileReader()
+	testBuffFileReader()
+	testBuffFileWriteAndRead()
+
+	repeatTimes = 640
+	writeTimes = 10240
+	buffSize = 1024 * 1024 * 30
+	initRepeatStr()
+
+	fmt.Printf("\n>>>> write %d times each %dbyte writeBufSize %dbyte total 400M\n\n", writeTimes, len(repeatStr), buffSize)
 	compareWrite()
 	testOsFileReader()
 	testBuffFileReader()

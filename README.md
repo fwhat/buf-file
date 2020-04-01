@@ -101,13 +101,23 @@ func main () {
 #### test
 
 ```
-# write 102400 times each 4k total 400M
+>>>> write 102400 times each 4096byte writeBufSize 31457280byte total 400M
 
-testOsFileWrite: avg cost: 111.123039 ms p: 359.961358M/s
-testBufferFileWrite: avg cost: 59.361948 ms p: 673.832336M/s
-testBufioFileWrite: avg cost: 70.071467 ms p: 570.845760M/s
-testOsFileReader: avg cost: 610.278888 ms p: 65.543804M/s
-testBuffFileReader: avg cost: 483.647542 ms p: 82.704855M/s
-testBuffFileWriteAndRead: avg cost: 95.381160 ms p: 419.370030M/s
+testOsFileWrite: avg cost: 109.787377 ms p: 364.340612M/s
+testOsWriteAll: avg cost: 56.966013 ms p: 702.173062M/s
+testBufferFileWrite: avg cost: 60.949642 ms p: 656.279491M/s
+testBufioFileWrite: avg cost: 60.766215 ms p: 658.260515M/s
+testOsFileReader: avg cost: 561.259386 ms p: 71.268296M/s
+testBuffFileReader: avg cost: 448.621274 ms p: 89.162067M/s
+testBuffFileWriteAndRead: avg cost: 72.040656 ms p: 555.242026M/s
 
+>>>> write 10240 times each 40960byte writeBufSize 31457280byte total 400M
+
+testOsFileWrite: avg cost: 62.626169 ms p: 638.710637M/s
+testOsWriteAll: avg cost: 62.516247 ms p: 639.833671M/s
+testBufferFileWrite: avg cost: 58.992151 ms p: 678.056305M/s
+testBufioFileWrite: avg cost: 59.194844 ms p: 675.734527M/s
+testOsFileReader: avg cost: 433.153303 ms p: 92.346058M/s
+testBuffFileReader: avg cost: 414.256288 ms p: 96.558583M/s
+testBuffFileWriteAndRead: avg cost: 74.541580 ms p: 536.613255M/s
 ```
