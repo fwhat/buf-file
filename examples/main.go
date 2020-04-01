@@ -303,12 +303,20 @@ var writeTimes = 102400
 var buffSize = 1024 * 1024 * 10
 
 func main() {
+	repeatTimes = 64 / 8
 	buffSize = 1024 * 1024 * 30
+	writeTimes = 102400 * 8
 	initRepeatStr()
 	fmt.Printf(">>>> write %d times each %dbyte writeBufSize %dbyte total 400M\n\n", writeTimes, len(repeatStr), buffSize)
 	compareWrite()
-	testOsFileReader()
-	testBuffFileReader()
+	testBuffFileWriteAndRead()
+
+	repeatTimes = 64
+	buffSize = 1024 * 1024 * 30
+	writeTimes = 102400
+	initRepeatStr()
+	fmt.Printf("\n>>>> write %d times each %dbyte writeBufSize %dbyte total 400M\n\n", writeTimes, len(repeatStr), buffSize)
+	compareWrite()
 	testBuffFileWriteAndRead()
 
 	repeatTimes = 640
@@ -318,7 +326,5 @@ func main() {
 
 	fmt.Printf("\n>>>> write %d times each %dbyte writeBufSize %dbyte total 400M\n\n", writeTimes, len(repeatStr), buffSize)
 	compareWrite()
-	testOsFileReader()
-	testBuffFileReader()
 	testBuffFileWriteAndRead()
 }

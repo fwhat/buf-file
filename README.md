@@ -101,23 +101,28 @@ func main () {
 #### test
 
 ```
+>>>> write 819200 times each 512byte writeBufSize 31457280byte total 400M
+
+testOsFileWrite: avg cost: 339.525128 ms p: 117.811604M/s
+testOsWriteAll: avg cost: 34.729239 ms p: 1151.767244M/s
+testBufferFileWrite: avg cost: 61.794869 ms p: 647.302931M/s
+testBufioFileWrite: avg cost: 60.539214 ms p: 660.728762M/s
+testBuffFileWriteAndRead: avg cost: 142.100109 ms p: 281.491690M/s
+
 >>>> write 102400 times each 4096byte writeBufSize 31457280byte total 400M
 
-testOsFileWrite: avg cost: 109.787377 ms p: 364.340612M/s
-testOsWriteAll: avg cost: 56.966013 ms p: 702.173062M/s
-testBufferFileWrite: avg cost: 60.949642 ms p: 656.279491M/s
-testBufioFileWrite: avg cost: 60.766215 ms p: 658.260515M/s
-testOsFileReader: avg cost: 561.259386 ms p: 71.268296M/s
-testBuffFileReader: avg cost: 448.621274 ms p: 89.162067M/s
-testBuffFileWriteAndRead: avg cost: 72.040656 ms p: 555.242026M/s
+testOsFileWrite: avg cost: 107.945281 ms p: 370.558115M/s
+testOsWriteAll: avg cost: 65.054610 ms p: 614.868029M/s
+testBufferFileWrite: avg cost: 60.757820 ms p: 658.351465M/s
+testBufioFileWrite: avg cost: 60.297148 ms p: 663.381294M/s
+testBuffFileWriteAndRead: avg cost: 100.220669 ms p: 399.119267M/s
 
 >>>> write 10240 times each 40960byte writeBufSize 31457280byte total 400M
 
-testOsFileWrite: avg cost: 62.626169 ms p: 638.710637M/s
-testOsWriteAll: avg cost: 62.516247 ms p: 639.833671M/s
-testBufferFileWrite: avg cost: 58.992151 ms p: 678.056305M/s
-testBufioFileWrite: avg cost: 59.194844 ms p: 675.734527M/s
-testOsFileReader: avg cost: 433.153303 ms p: 92.346058M/s
-testBuffFileReader: avg cost: 414.256288 ms p: 96.558583M/s
-testBuffFileWriteAndRead: avg cost: 74.541580 ms p: 536.613255M/s
+testOsFileWrite: avg cost: 37.746534 ms p: 1059.699936M/s
+testOsWriteAll: avg cost: 52.466312 ms p: 762.393969M/s
+testBufferFileWrite: avg cost: 61.121876 ms p: 654.430177M/s
+testBufioFileWrite: avg cost: 60.452312 ms p: 661.678582M/s
+testBuffFileWriteAndRead: avg cost: 96.610790 ms p: 414.032426M/s
+
 ```
