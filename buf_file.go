@@ -7,7 +7,7 @@ import (
 )
 
 type BufFile struct {
-	filepath       string
+	Filepath       string
 	buf            []byte
 	bufferedSize   *atomic.Value
 	fileSize       int64
@@ -37,7 +37,7 @@ func (b *BufFile) Available() int { return len(b.buf) - b.Buffered() }
 
 func (b *BufFile) GetWriter() (*BufFileWriter, error) {
 	if b.buffFileWriter == nil {
-		file, err := os.OpenFile(b.filepath, os.O_WRONLY, 0)
+		file, err := os.OpenFile(b.Filepath, os.O_WRONLY, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +52,7 @@ func (b *BufFile) GetWriter() (*BufFileWriter, error) {
 }
 
 func (b *BufFile) GetReader() (*BufFileReader, error) {
-	file, err := os.Open(b.filepath)
+	file, err := os.Open(b.Filepath)
 
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (b *BufFile) GetReader() (*BufFileReader, error) {
 }
 
 func NewBufFile(filepath string, writeBuffSize int) (*BufFile, error) {
-	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_RDONLY, 0)
+	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewBufFile(filepath string, writeBuffSize int) (*BufFile, error) {
 	return &BufFile{
 		buf:          make([]byte, writeBuffSize),
 		bufferedSize: buffSize,
-		filepath:     filepath,
+		Filepath:     filepath,
 		fileSize:     stat.Size(),
 		fileSizeLock: &sync.Mutex{},
 	}, nil
