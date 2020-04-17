@@ -9,7 +9,7 @@ import (
 type BufFile struct {
 	Filepath       string
 	buf            []byte
-	bufferedSize   *atomic.Value
+	bufferedSize   int64
 	fileSize       int64
 	fileSizeLock   *sync.RWMutex
 	buffFileWriter *BufFileWriter
@@ -23,14 +23,14 @@ func (b *BufFile) writerStopped() bool {
 	return true
 }
 
-func (b *BufFile) Buffered() int { return b.bufferedSize.Load().(int) }
+func (b *BufFile) Buffered() int { return (int)(atomic.LoadInt64(&b.bufferedSize)) }
 
 func (b *BufFile) incBufferedSize(size int) {
-	b.bufferedSize.Store(b.bufferedSize.Load().(int) + size)
+	atomic.StoreInt64(&b.bufferedSize, atomic.LoadInt64(&b.bufferedSize)+int64(size))
 }
 
 func (b *BufFile) setBufferedSize(size int) {
-	b.bufferedSize.Store(size)
+	atomic.StoreInt64(&b.bufferedSize, int64(size))
 }
 
 func (b *BufFile) Available() int { return len(b.buf) - b.Buffered() }
@@ -75,12 +75,9 @@ func NewBufFile(filepath string, writeBuffSize int) (*BufFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	buffSize := &atomic.Value{}
-	buffSize.Store(0)
 
 	return &BufFile{
 		buf:          make([]byte, writeBuffSize),
-		bufferedSize: buffSize,
 		Filepath:     filepath,
 		fileSize:     stat.Size(),
 		fileSizeLock: &sync.RWMutex{},

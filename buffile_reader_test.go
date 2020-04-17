@@ -40,7 +40,12 @@ func TestBufFileReader_Close(t *testing.T) {
 }
 
 func TestBufFileReader_ReadAndWrite(t *testing.T) {
-	WriteAndManyReader(t, 10, 1222166)
+	WriteAndManyReader(t, 10, 1222166, 333343)
+}
+
+func TestBufFileReader_ReadAndWriteLessBuffSize(t *testing.T) {
+	// 77 char * 1222166 ~ 89M
+	WriteAndManyReader(t, 10, 1222166, 133)
 }
 
 func readFileWithReadAt(read io.ReaderAt, total int) []byte {
@@ -64,13 +69,13 @@ func readFileWithReadAt(read io.ReaderAt, total int) []byte {
 	return readContent
 }
 
-func WriteAndManyReader(t *testing.T, readerCount int, writeCount int) {
+func WriteAndManyReader(t *testing.T, readerCount int, writeCount int, bufSize int) {
 	tempFile, err := ioutil.TempFile("", "")
 	if err != nil {
 		t.Error(err)
 	}
 
-	bufFile, err := NewBufFile(tempFile.Name(), 33333)
+	bufFile, err := NewBufFile(tempFile.Name(), bufSize)
 
 	if err != nil {
 		t.Error(err)
