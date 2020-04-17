@@ -33,9 +33,7 @@ func (r *BufFileReader) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (r *BufFileReader) ReadAt(p []byte, offset int64) (n int, err error) {
-	r.bufFile.fileSizeLock.Lock()
-	defer r.bufFile.fileSizeLock.Unlock()
-	if offset < r.bufFile.fileSize {
+	if offset < r.bufFile.FileSize() {
 		n, err = r.fileReader.ReadAt(p, offset)
 	}
 
@@ -61,7 +59,7 @@ func (r *BufFileReader) ReadAt(p []byte, offset int64) (n int, err error) {
 		if n > 0 {
 			cn = copy(p[n:], r.bufFile.buf[0:r.bufFile.Buffered()])
 		} else {
-			cn = copy(p[n:], r.bufFile.buf[(offset-r.bufFile.fileSize):r.bufFile.Buffered()])
+			cn = copy(p[n:], r.bufFile.buf[(offset-r.bufFile.FileSize()):r.bufFile.Buffered()])
 		}
 		n = cn + n
 	}

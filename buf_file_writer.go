@@ -16,8 +16,6 @@ type BufFileWriter struct {
 }
 
 func (w *BufFileWriter) Flush() error {
-	w.bufFile.fileSizeLock.Lock()
-	defer w.bufFile.fileSizeLock.Unlock()
 	if w.err != nil {
 		return w.err
 	}
@@ -28,7 +26,7 @@ func (w *BufFileWriter) Flush() error {
 	if n < w.bufFile.Buffered() && err == nil {
 		err = io.ErrShortWrite
 	}
-	w.bufFile.fileSize += int64(n)
+	w.bufFile.incFileSize(int64(n))
 	if err != nil {
 		if n > 0 && n < w.bufFile.Buffered() {
 			copy(w.bufFile.buf[0:w.bufFile.Buffered()-n], w.bufFile.buf[n:w.bufFile.Buffered()])
@@ -48,13 +46,11 @@ func (w *BufFileWriter) Write(p []byte) (nn int, err error) {
 	for len(p) > w.bufFile.Available() && w.err == nil {
 		var n int
 		if w.bufFile.Buffered() == 0 {
-			w.bufFile.fileSizeLock.Lock()
 			// Large write, empty buffer.
 			// Write directly from p to avoid copy.
 			n, w.err = w.fileWriter.Write(p)
 
-			w.bufFile.fileSize += int64(n)
-			w.bufFile.fileSizeLock.Unlock()
+			w.bufFile.incFileSize(int64(n))
 		} else {
 			n = copy(w.bufFile.buf[w.bufFile.Buffered():], p)
 			w.bufFile.incBufferedSize(n)

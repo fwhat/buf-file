@@ -1,9 +1,9 @@
-package tests
+package buf_file
 
 import (
+	"bufio"
 	"crypto/md5"
 	"fmt"
-	buffile "github.com/Dowte/buf-file"
 	"io"
 	"io/ioutil"
 	"os"
@@ -44,7 +44,7 @@ func TestWriteSize(t *testing.T) {
 	defer tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	bufFile, err := buffile.NewBufFile(tempFile.Name(), 1024*1024*4)
+	bufFile, err := NewBufFile(tempFile.Name(), 1024*1024*4)
 
 	if err != nil {
 		t.Error(err)
@@ -55,6 +55,7 @@ func TestWriteSize(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	defer writer.Close()
 
 	for i := 0; i < 1024; i++ {
 		n, err := writer.Write(s)
@@ -75,7 +76,7 @@ func TestWriteBuffered(t *testing.T) {
 	defer tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	bufFile, err := buffile.NewBufFile(tempFile.Name(), 1024)
+	bufFile, err := NewBufFile(tempFile.Name(), 1024)
 
 	if err != nil {
 		t.Error(err)
@@ -86,6 +87,7 @@ func TestWriteBuffered(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	defer writer.Close()
 
 	var count = 0
 
@@ -111,7 +113,7 @@ func TestWriteContent(t *testing.T) {
 	defer tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	bufFile, err := buffile.NewBufFile(tempFile.Name(), 1024*1024*4)
+	bufFile, err := NewBufFile(tempFile.Name(), 1024*1024*4)
 
 	if err != nil {
 		t.Error(err)
@@ -122,6 +124,8 @@ func TestWriteContent(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	defer writer.Close()
+
 	err = writeFile(writer)
 	if err != nil {
 		t.Error(err)
@@ -158,4 +162,44 @@ func hashx(TestString []byte) string {
 	Result := Md5Inst.Sum([]byte(""))
 
 	return fmt.Sprintf("%x", Result)
+}
+
+func BenchmarkBufFileWriter_Write(b *testing.B) {
+	tempFile, err := ioutil.TempFile("", "")
+	if err != nil {
+		b.Error(err)
+	}
+
+	bufFile, err := NewBufFile(tempFile.Name(), 1024*1024*4)
+
+	if err != nil {
+		b.Error(err)
+	}
+
+	writer, err := bufFile.GetWriter()
+	if err != nil {
+		b.Error(err)
+	}
+	for i := 0; i < b.N; i++ {
+		writer.Write(s)
+	}
+	writer.Close()
+	tempFile.Close()
+	os.Remove(tempFile.Name())
+}
+
+func BenchmarkBufioWriter_Write(b *testing.B) {
+	tempFile, err := ioutil.TempFile("", "")
+	if err != nil {
+		b.Error(err)
+	}
+
+	writer := bufio.NewWriterSize(tempFile, 1024*1024*4)
+
+	for i := 0; i < b.N; i++ {
+		writer.Write(s)
+	}
+
+	tempFile.Close()
+	os.Remove(tempFile.Name())
 }
