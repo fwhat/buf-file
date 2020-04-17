@@ -1,9 +1,8 @@
-package tests
+package buf_file
 
 import (
 	"crypto/md5"
 	"fmt"
-	buffile "github.com/Dowte/buf-file"
 	"io"
 	"io/ioutil"
 	"os"
@@ -44,7 +43,7 @@ func TestWriteSize(t *testing.T) {
 	defer tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	bufFile, err := buffile.NewBufFile(tempFile.Name(), 1024*1024*4)
+	bufFile, err := NewBufFile(tempFile.Name(), 1024*1024*4)
 
 	if err != nil {
 		t.Error(err)
@@ -75,7 +74,7 @@ func TestWriteBuffered(t *testing.T) {
 	defer tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	bufFile, err := buffile.NewBufFile(tempFile.Name(), 1024)
+	bufFile, err := NewBufFile(tempFile.Name(), 1024)
 
 	if err != nil {
 		t.Error(err)
@@ -111,7 +110,7 @@ func TestWriteContent(t *testing.T) {
 	defer tempFile.Close()
 	defer os.Remove(tempFile.Name())
 
-	bufFile, err := buffile.NewBufFile(tempFile.Name(), 1024*1024*4)
+	bufFile, err := NewBufFile(tempFile.Name(), 1024*1024*4)
 
 	if err != nil {
 		t.Error(err)

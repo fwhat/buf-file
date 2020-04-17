@@ -33,8 +33,7 @@ func (r *BufFileReader) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (r *BufFileReader) ReadAt(p []byte, offset int64) (n int, err error) {
-	r.bufFile.fileSizeLock.Lock()
-	defer r.bufFile.fileSizeLock.Unlock()
+	r.bufFile.fileSizeLock.RLock()
 	if offset < r.bufFile.fileSize {
 		n, err = r.fileReader.ReadAt(p, offset)
 	}
@@ -43,16 +42,18 @@ func (r *BufFileReader) ReadAt(p []byte, offset int64) (n int, err error) {
 		if err == io.EOF {
 			err = nil
 		} else {
-			return n, err
+			goto end
 		}
 	}
 
 	if n == 0 && r.bufFile.writerStopped() {
-		return n, io.EOF
+		err = io.EOF
+		goto end
 	}
 
 	if n == 0 && r.closed {
-		return n, os.ErrClosed
+		err = os.ErrClosed
+		goto end
 	}
 
 	// 剩余空间由buff中读取
@@ -66,9 +67,11 @@ func (r *BufFileReader) ReadAt(p []byte, offset int64) (n int, err error) {
 		n = cn + n
 	}
 
+end:
+	r.bufFile.fileSizeLock.RUnlock()
 	if n == 0 {
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	return n, nil
+	return n, err
 }

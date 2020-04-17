@@ -11,7 +11,7 @@ type BufFile struct {
 	buf            []byte
 	bufferedSize   *atomic.Value
 	fileSize       int64
-	fileSizeLock   *sync.Mutex
+	fileSizeLock   *sync.RWMutex
 	buffFileWriter *BufFileWriter
 }
 
@@ -83,6 +83,6 @@ func NewBufFile(filepath string, writeBuffSize int) (*BufFile, error) {
 		bufferedSize: buffSize,
 		Filepath:     filepath,
 		fileSize:     stat.Size(),
-		fileSizeLock: &sync.Mutex{},
+		fileSizeLock: &sync.RWMutex{},
 	}, nil
 }
