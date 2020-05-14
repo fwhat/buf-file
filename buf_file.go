@@ -23,6 +23,13 @@ func (b *BufFile) writerStopped() bool {
 	return true
 }
 
+func (b *BufFile) GetSize() int {
+	b.fileSizeLock.RLock()
+	defer b.fileSizeLock.RUnlock()
+
+	return int(b.fileSize) + b.Buffered()
+}
+
 func (b *BufFile) Buffered() int { return (int)(atomic.LoadInt64(&b.bufferedSize)) }
 
 func (b *BufFile) incBufferedSize(size int) {
