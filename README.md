@@ -6,7 +6,7 @@
 package main
 
 import (
-    "github.com/Dowte/buf-file"
+    "github.com/qjues/buf-file"
     "errors"
     "io"
     "os"
@@ -41,7 +41,7 @@ func main () {
 package main
 
 import (
-    "github.com/Dowte/buf-file"
+    "github.com/qjues/buf-file"
     "errors"
     "io"
     "os"

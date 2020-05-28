@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"crypto/md5"
 	"fmt"
-	"github.com/Dowte/buf-file"
+	"github.com/qjues/buf-file"
 	"io"
 	"io/ioutil"
 	"os"
